@@ -1,0 +1,18 @@
+[package]
+name = "dot"
+version = "0.1.0"
+edition = "2024"
+authors = ["hansan"]
+license = "MIT"
+description = "dot!(\"KEY\")"
+repository = "https://github.com/funtoy/dot"
+
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = "2"
+anyhow = "1"
