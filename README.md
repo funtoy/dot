@@ -9,15 +9,15 @@
 ```toml
 # Cargo.toml
 [dependencies]
-dot = { path = "./dot" }
+sdot = { path = "./sdot" }
 ```
 
 ```rust
 // 取值；编译期找不到则编译失败，用默认错误信息
-let api_key: &str = dot::dot!("API_KEY");
+let api_key: &str = sdot::dot!("API_KEY");
 
 // 第二个参数自定义“找不到”时的编译错误信息
-let api_key: &str = dot::dot!("API_KEY", "请在 .env 里配置 API_KEY");
+let api_key: &str = sdot::dot!("API_KEY", "请在 .env 里配置 API_KEY");
 ```
 
 宏接受 1～2 个**字符串字面量**参数。传入非字面量（如 `dot!(FOO)`）会得到指向出错位置的
