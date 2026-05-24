@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 
-use anyhow::{Result, anyhow};
 use proc_macro::TokenStream;
 use quote::quote;
 use std::collections::HashMap;
@@ -35,8 +34,8 @@ fn find_env_file(filename: &str) -> Option<PathBuf> {
     }
 }
 
-fn load_file(path: &PathBuf) -> Result<HashMap<String, String>> {
-    let content = std::fs::read_to_string(path).map_err(|e| anyhow!("dot! 读取文件 `{}` 失败: {}", path.display(), e))?;
+fn load_file(path: &PathBuf) -> std::io::Result<HashMap<String, String>> {
+    let content = std::fs::read_to_string(path)?;
 
     let mut vars = HashMap::new();
     for line in content.lines() {
@@ -59,7 +58,7 @@ pub fn dot(input: TokenStream) -> TokenStream {
 }
 
 fn expand_env(input_raw: proc_macro2::TokenStream) -> syn::Result<proc_macro2::TokenStream> {
-    let args = <Punctuated<syn::LitStr, Token![,]>>::parse_terminated.parse(input_raw.into()).expect("dot! 参数错误");
+    let args = <Punctuated<syn::LitStr, Token![,]>>::parse_terminated.parse(input_raw.into())?;
 
     let mut iter = args.iter();
     let var_name = iter.next().ok_or_else(|| syn::Error::new(args.span(), "dot! 需要1～2个参数"))?.value();
@@ -68,17 +67,16 @@ fn expand_env(input_raw: proc_macro2::TokenStream) -> syn::Result<proc_macro2::T
         return Err(syn::Error::new(args.span(), "dot! 只需要1～2个参数"));
     }
 
-    let abs_path = ENV_FILE_PATH
+    // 文件路径是可选的：缺文件不报错，只在文件存在时才嵌入 include_bytes! 以追踪文件变更
+    let track = ENV_FILE_PATH
         .as_ref()
-        .ok_or_else(|| syn::Error::new(args.span(), "找不到 .env.* 文件"))?
-        .to_str()
-        .ok_or_else(|| syn::Error::new(args.span(), "路径含非 UTF-8 字符"))?
-        .to_string();
+        .and_then(|p| p.to_str())
+        .map(|p| quote! { const _: &[u8] = include_bytes!(#p); });
 
     match CONFIG.get(&var_name).cloned().or_else(|| std::env::var(&var_name).ok()) {
         Some(val) => Ok(quote! {
             {
-                const _: &[u8] = include_bytes!(#abs_path);
+                #track
                 #val
             }
         }),
